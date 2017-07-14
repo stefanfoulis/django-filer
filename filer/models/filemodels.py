@@ -18,6 +18,8 @@ from .. import settings as filer_settings
 from ..fields.multistorage_file import MultiStorageFileField
 from ..utils.compatibility import LTE_DJANGO_1_7, python_2_unicode_compatible
 from .foldermodels import Folder
+from ..drafts.models import DraftLiveMixin
+
 
 try:
     from polymorphic.models import PolymorphicModel
@@ -42,7 +44,7 @@ class FileManager(PolymorphicManager):
 
 
 @python_2_unicode_compatible
-class File(PolymorphicModel, mixins.IconsMixin):
+class File(PolymorphicModel, DraftLiveMixin, mixins.IconsMixin):
     file_type = 'File'
     _icon = "file"
     _file_data_changed_hint = None

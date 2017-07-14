@@ -119,6 +119,7 @@
                                                 title="{% blocktrans with file.label as item_label %}Change '{{ item_label }}' details{% endblocktrans %}">
                                         {% endif %}
                                         {{ file.label }}
+                                        {% include 'admin/filer/includes/draft-live-indicator.html' %}
                                         {% if has_change_permission or is_popup and filer_admin_context.pick_file %}
                                             </a>
                                         {% endif %}

@@ -11,6 +11,7 @@ from ..models import File
 from ..utils.compatibility import LTE_DJANGO_1_5, LTE_DJANGO_1_6, unquote
 from .permissions import PrimitivePermissionAwareModelAdmin
 from .tools import AdminContext, admin_url_params_encoded, popup_status
+from ..drafts.admin import DraftLiveAdminMixin
 
 
 class FileAdminChangeFrom(forms.ModelForm):
@@ -19,18 +20,24 @@ class FileAdminChangeFrom(forms.ModelForm):
         exclude = ()
 
 
-class FileAdmin(PrimitivePermissionAwareModelAdmin):
+class FileAdmin(DraftLiveAdminMixin, PrimitivePermissionAwareModelAdmin):
     list_display = ('label',)
     list_per_page = 10
     search_fields = ['name', 'original_filename', 'sha1', 'description']
     raw_id_fields = ('owner',)
-    readonly_fields = ('sha1', 'display_canonical')
+    readonly_fields = (
+        'sha1',
+        'display_canonical',
+        'draft_live_info',
+        'draft_or_live',
+    )
+    save_on_top = True
 
     # save_as hack, because without save_as it is impossible to hide the
     # save_and_add_another if save_as is False. To show only save_and_continue
     # and save in the submit row we need save_as=True and in
     # render_change_form() override add and change to False.
-    save_as = True
+    # save_as = True
 
     form = FileAdminChangeFrom
 
@@ -45,6 +52,7 @@ class FileAdmin(PrimitivePermissionAwareModelAdmin):
         fieldsets = (
             (None, {
                 'fields': (
+                    ('draft_or_live', 'draft_live_info'),
                     'name',
                     'owner',
                     'description',
@@ -67,12 +75,63 @@ class FileAdmin(PrimitivePermissionAwareModelAdmin):
             )
         return fieldsets
 
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = {} if extra_context is None else extra_context
+        # Double query. Sad.
+        obj = self.get_object(request, unquote(object_id))
+        if True or obj.is_live:
+            extra_context['save_as'] = False
+            extra_context['show_save'] = False
+            extra_context['show_delete'] = False
+            extra_context['show_save_as_new'] = False
+            extra_context['show_save_and_add_another'] = False
+            extra_context['show_save_and_continue'] = False
+            extra_context['has_add_permission'] = False
+            extra_context['has_change_permission'] = False
+        else:
+            extra_context['show_delete'] = False
+        extra_context['draft_workflow_buttons'] = self.get_buttons(request, obj)
+        from pprint import pprint as pp
+        pp(extra_context['draft_workflow_buttons'])
+        print('1) change_view show_delete:{}'.format(extra_context['show_delete']))
+        return self.changeform_view(request, object_id, form_url, extra_context)
+
+    def get_admin_changelist_url(self, obj=None):
+        return self.get_admin_directory_listing_url_for_obj(obj)
+
+    def get_admin_directory_listing_url_for_obj(self, obj):
+        if obj.folder_id:
+            return reverse('admin:filer-directory_listing',
+                      kwargs={'folder_id': obj.folder_id})
+        else:
+            return reverse(
+                'admin:filer-directory_listing-unfiled_images')
+
     def response_change(self, request, obj):
         """
         Overrides the default to be able to forward to the directory listing
         instead of the default change_list_view
         """
-        if (
+        if request.POST and '_create_draft' in request.POST:
+            draft = obj.create_draft()
+            return HttpResponseRedirect(self.get_detail_admin_url(draft))
+        elif request.POST and '_discard_draft' in request.POST:
+            live = obj.get_live()
+            obj.discard_draft()
+            return HttpResponseRedirect(self.get_detail_or_changelis_url(live))
+        elif request.POST and '_publish' in request.POST:
+            live = obj.publish()
+            return HttpResponseRedirect(self.get_detail_admin_url(live))
+        elif request.POST and '_request_deletion' in request.POST:
+            live = obj.request_deletion()
+            return HttpResponseRedirect(self.get_detail_admin_url(live))
+        elif request.POST and '_discard_requested_deletion' in request.POST:
+            obj.discard_requested_deletion()
+            return HttpResponseRedirect(self.get_detail_admin_url(obj))
+        elif request.POST and '_publish_deletion' in request.POST:
+            obj.publish_deletion()
+            return HttpResponseRedirect(self.get_admin_changelist_url(obj))
+        elif (
             request.POST and
             '_continue' not in request.POST and
             '_saveasnew' not in request.POST and
@@ -81,26 +140,24 @@ class FileAdmin(PrimitivePermissionAwareModelAdmin):
             # Popup in pick mode or normal mode. In both cases we want to go
             # back to the folder list view after save. And not the useless file
             # list view.
-            if obj.folder:
-                url = reverse('admin:filer-directory_listing',
-                              kwargs={'folder_id': obj.folder.id})
-            else:
-                url = reverse(
-                    'admin:filer-directory_listing-unfiled_images')
+            url = self.get_admin_directory_listing_url_for_obj(obj)
             url = "{0}{1}".format(
                 url,
                 admin_url_params_encoded(request),
             )
             return HttpResponseRedirect(url)
+
         return super(FileAdmin, self).response_change(request, obj)
 
     def render_change_form(self, request, context, add=False, change=False,
                            form_url='', obj=None):
         info = self.model._meta.app_label, self.model._meta.model_name
-        extra_context = {'show_delete': True,
-                         'history_url': 'admin:%s_%s_history' % info,
-                         'is_popup': popup_status(request),
-                         'filer_admin_context': AdminContext(request)}
+        extra_context = {
+            # 'show_delete': True,
+            'history_url': 'admin:%s_%s_history' % info,
+            'is_popup': popup_status(request),
+            'filer_admin_context': AdminContext(request),
+        }
         context.update(extra_context)
         return super(FileAdmin, self).render_change_form(
             request=request, context=context, add=add, change=change,

@@ -15,6 +15,8 @@ class PrimitivePermissionAwareModelAdmin(admin.ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
+        # if obj and obj.is_live:
+        #     return False
         if hasattr(obj, 'has_edit_permission'):
             if obj.has_edit_permission(request):
                 return True
