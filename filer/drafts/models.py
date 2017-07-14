@@ -7,6 +7,8 @@ from django.db.models import Q
 from django.utils import timezone
 from django.utils.functional import cached_property
 
+from .dependency_graph import update_relations
+
 
 class DraftLiveQuerySetMixin(object):
     def live(self):
@@ -152,48 +154,38 @@ class DraftLiveMixin(models.Model):
     @transaction.atomic
     def discard_draft(self):
         assert self.is_draft
+        update_relations(obj=self, new_obj=self.live)
         self.delete()
 
     @transaction.atomic
     def publish(self, validate=True):
         assert self.is_draft
+        draft = self
         if validate:
-            self.can_publish()
+            draft.can_publish()
         now = timezone.now()
-        existing_live = self.live
+        existing_live = draft.live
         if not existing_live:
             # This means there is no existing live version. So we can just make
             # this draft the live version. As a nice side-effect all existing
             # ForeignKeys pointing to this object will now be automatically
             # pointing the the live version. Win-win.
-            self.is_live = True
-            self.published_at = now
-            self.save()
-            return self
+            draft.is_live = True
+            draft.published_at = now
+            draft.save()
+            return draft
 
         # There is an existing live version:
         # * update the live version with the data from the draft
-        # TODO: For some reason I am getting a unique constraint error even when
-        #       saveing with force_update=True. Fallback to iterating over the
-        #       fields.  ====> it is because we forgot to set live.draft=None
-        # live = Thing.objects.get(pk=self.pk)
-        # live.pk = existing_live.pk
-        # live.published_at = now
-        # live.is_live = True
-        # live.save(force_update=True)
-        live = self.live
+        live = draft.live
         live.published_at = now
         live.copy_object(old_obj=self)
         # * find any other objects still pointing to the draft version and
-        #   switch them to the live version. (otherwise cascade or set null will
-        #   yield unexpected results)
-        # fields = Thing._meta.get_fields()
-        # # import ipdb; ipdb.set_trace()
-        # for field in fields:
-        #     # update
-        #     print field
-        # * Delete myself (draft)
-        self.delete()
+        #   switch them to the live version. (otherwise cascade or set null
+        #   would yield unexpected results)
+        update_relations(obj=draft, new_obj=live)
+        # * Delete draft (self)
+        draft.delete()
         return live
 
     @transaction.atomic

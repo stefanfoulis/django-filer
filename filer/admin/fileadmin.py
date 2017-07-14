@@ -35,9 +35,9 @@ class FileAdmin(DraftLiveAdminMixin, PrimitivePermissionAwareModelAdmin):
     form = FileAdminChangeFrom
 
     def get_queryset(self, request):
-        if LTE_DJANGO_1_5:
-            return super(FileAdmin, self).queryset(request)
-        return super(FileAdmin, self).get_queryset(request)
+        return (
+            super(FileAdmin, self).get_queryset(request)
+        )
 
     @classmethod
     def build_fieldsets(cls, extra_main_fields=(), extra_advanced_fields=(),
