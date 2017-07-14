@@ -205,11 +205,10 @@ class DraftLiveMixin(models.Model):
             return self.live.request_deletion()
 
         # It is a live object
+        live = self
         if self.has_pending_changes:
-            live = self.live
             draft = live.draft
         else:
-            live = self
             draft = None
 
         live.deletion_requested = True
@@ -240,16 +239,23 @@ class DraftLiveMixin(models.Model):
 
     def available_actions(self, user):
         # TODO: include permission information
-        actions = set()
+        actions = {}
         if self.deletion_requested:
-            actions.add('discard_requested_deletion')
-            actions.add('publish_deletion')
+            actions['discard_requested_deletion'] = {}
+            actions['publish_deletion'] = {}
         if self.is_draft and self.has_pending_changes:
-            actions.add('publish')
+            actions['publish'] = {}
         if self.is_draft and self.has_pending_changes and self.is_published:
-            actions.add('discard_draft')
+            actions['discard_draft'] = {}
         if self.is_live and not self.has_pending_changes:
-            actions.add('create_draft')
+            actions['create_draft'] = {}
         if self.is_live and not self.deletion_requested:
-            actions.add('request_deletion')
-        return sorted(list(actions))
+            actions['request_deletion'] = {}
+        for action_name, data in actions.items():
+            data['name'] = action_name
+            if action_name in ('publish', 'publish_deletion'):
+                # FIXME: do actual permission check
+                data['has_permission'] = user.is_superuser
+            else:
+                data['has_permission'] = True
+        return actions

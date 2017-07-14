@@ -33,12 +33,6 @@ class FileAdmin(DraftLiveAdminMixin, PrimitivePermissionAwareModelAdmin):
     )
     save_on_top = True
 
-    # save_as hack, because without save_as it is impossible to hide the
-    # save_and_add_another if save_as is False. To show only save_and_continue
-    # and save in the submit row we need save_as=True and in
-    # render_change_form() override add and change to False.
-    # save_as = True
-
     form = FileAdminChangeFrom
 
     def get_queryset(self, request):
@@ -79,21 +73,11 @@ class FileAdmin(DraftLiveAdminMixin, PrimitivePermissionAwareModelAdmin):
         extra_context = {} if extra_context is None else extra_context
         # Double query. Sad.
         obj = self.get_object(request, unquote(object_id))
-        if True or obj.is_live:
-            extra_context['save_as'] = False
-            extra_context['show_save'] = False
-            extra_context['show_delete'] = False
-            extra_context['show_save_as_new'] = False
-            extra_context['show_save_and_add_another'] = False
-            extra_context['show_save_and_continue'] = False
-            extra_context['has_add_permission'] = False
-            extra_context['has_change_permission'] = False
-        else:
-            extra_context['show_delete'] = False
+        if obj.is_live:
+            extra_context['is_readonly'] = True
+            if obj.has_pending_changes:
+                extra_context['admin_draft_change_url'] = self.get_detail_admin_url(obj.draft)
         extra_context['draft_workflow_buttons'] = self.get_buttons(request, obj)
-        from pprint import pprint as pp
-        pp(extra_context['draft_workflow_buttons'])
-        print('1) change_view show_delete:{}'.format(extra_context['show_delete']))
         return self.changeform_view(request, object_id, form_url, extra_context)
 
     def get_admin_changelist_url(self, obj=None):
@@ -110,7 +94,8 @@ class FileAdmin(DraftLiveAdminMixin, PrimitivePermissionAwareModelAdmin):
     def response_change(self, request, obj):
         """
         Overrides the default to be able to forward to the directory listing
-        instead of the default change_list_view
+        instead of the default change_list_view and handles the draft/live
+        related actions.
         """
         if request.POST and '_create_draft' in request.POST:
             draft = obj.create_draft()
@@ -153,7 +138,6 @@ class FileAdmin(DraftLiveAdminMixin, PrimitivePermissionAwareModelAdmin):
                            form_url='', obj=None):
         info = self.model._meta.app_label, self.model._meta.model_name
         extra_context = {
-            # 'show_delete': True,
             'history_url': 'admin:%s_%s_history' % info,
             'is_popup': popup_status(request),
             'filer_admin_context': AdminContext(request),
@@ -204,7 +188,9 @@ class FileAdmin(DraftLiveAdminMixin, PrimitivePermissionAwareModelAdmin):
 
     def get_model_perms(self, request):
         """
-        It seems this is only used for the list view. NICE :-)
+        These permissions are only used in the admin index view, causing
+        Files to not appear in the global list. We allow navigating to it
+        through the directory listing instead.
         """
         return {
             'add': False,

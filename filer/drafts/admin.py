@@ -3,9 +3,8 @@ from __future__ import unicode_literals
 
 from collections import OrderedDict
 
-from django.contrib import admin, messages
+from copy import copy
 from django.core.urlresolvers import reverse
-from django.http import HttpResponseRedirect
 
 
 class DraftLiveAdminMixin(object):
@@ -65,7 +64,33 @@ class DraftLiveAdminMixin(object):
     draft_or_live.admin_ordering = 'is_live'
 
     def get_buttons(self, request, obj):
+        defaults = OrderedDict()
+        defaults['create_draft'] = {'label': 'Create and edit draft'}
+        defaults['edit_draft'] = {'label': 'Edit draft'}
+        defaults['show_live'] = {'label': 'Show live version'}
+        defaults['discard_draft'] = {'label': 'Discard draft'}
+        defaults['publish'] = {'label': 'Publish', 'class': 'default'}
+        defaults['request_deletion'] = {'label': 'Request deletion'}
+        defaults['discard_requested_deletion'] = {'label': 'Discard requested deletion'}
+        defaults['publish_deletion'] = {'label': 'Publish deletion', 'class': 'danger'}
         buttons = OrderedDict()
-        for action in obj.available_actions(request.user):
-            buttons[action] = {'label': action.title(), 'field_name': '_{}'.format(action), 'action': action}
+        for action in obj.available_actions(request.user).values():
+            action_name = action['name']
+            buttons[action_name] = copy(defaults[action_name])
+            buttons[action_name].update(action)
+            buttons[action_name]['field_name'] = '_{}'.format(action_name)
+
+        # Additional links
+        if obj.is_live and obj.has_pending_changes:
+            # Add a link for editing an existing draft
+            action_name = 'edit_draft'
+            buttons[action_name] = copy(defaults[action_name])
+            buttons[action_name]['url'] = self.get_detail_admin_url(obj.draft)
+            buttons[action_name]['has_permission'] = True
+        if obj.is_draft and obj.is_published:
+            # Add a link to go back to live
+            action_name = 'show_live'
+            buttons[action_name] = copy(defaults[action_name])
+            buttons[action_name]['url'] = self.get_detail_admin_url(obj.live)
+            buttons[action_name]['has_permission'] = True
         return buttons
