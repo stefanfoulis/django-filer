@@ -31,7 +31,6 @@ class FileAdmin(DraftLiveAdminMixin, PrimitivePermissionAwareModelAdmin):
         'draft_live_info',
         'draft_or_live',
     )
-    save_on_top = True
 
     form = FileAdminChangeFrom
 
@@ -44,9 +43,13 @@ class FileAdmin(DraftLiveAdminMixin, PrimitivePermissionAwareModelAdmin):
     def build_fieldsets(cls, extra_main_fields=(), extra_advanced_fields=(),
                         extra_fieldsets=()):
         fieldsets = (
-            (None, {
+            (_('Draft/Live status'), {
                 'fields': (
                     ('draft_or_live', 'draft_live_info'),
+                )
+            }),
+            (' ', {
+                'fields': (
                     'name',
                     'owner',
                     'description',
