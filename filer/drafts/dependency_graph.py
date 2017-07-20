@@ -22,6 +22,10 @@ def get_related_objects(obj, excludes=None, using='default'):
 
 
 def update_relations(obj, new_obj):
+    """
+    Given an obj and a new_obj (must be the same model) will change all
+    relationships pointing to obj to point to new_obj.
+    """
     # TODO: If there is are relations to obj that are linking to both the live
     #       and draft versions this may cause an error at db levels because of
     #       unique constraints.
