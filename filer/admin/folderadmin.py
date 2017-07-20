@@ -343,6 +343,10 @@ class FolderAdmin(PrimitivePermissionAwareModelAdmin):
         if folder.is_root:
             folder_qs = folder_qs.exclude(**root_exclude_kw)
 
+        # Prevent duplicates for draft/live versions.
+        # TODO: select_related('draft'). Currently that throws an error though.
+        file_qs = file_qs.draft_or_live_only()
+
         folder_children += folder_qs
         folder_files += file_qs
 

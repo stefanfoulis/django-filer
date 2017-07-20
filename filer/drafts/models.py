@@ -26,6 +26,19 @@ class DraftLiveQuerySetMixin(object):
             Q(is_live=True, draft__isnull=False)
         )
 
+    def draft_or_live_only(self):
+        """
+        Returns a queryset that does not return duplicates of the same object
+        if there is both a draft and live version.
+        only a draft: include the draft
+        only a live: include the live
+        draft and live: inlcude the live
+        """
+        return self.filter(
+            Q(is_live=True) |  # live objects
+            Q(is_live=False, live__isnull=True)  # drafts without a live version
+        )
+
 
 class DraftLiveQuerySet(DraftLiveQuerySetMixin, models.QuerySet):
     pass

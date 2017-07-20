@@ -12,14 +12,14 @@ from django.core.files.base import ContentFile
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
+from polymorphic.query import PolymorphicQuerySet
 
 from . import mixins
 from .. import settings as filer_settings
 from ..fields.multistorage_file import MultiStorageFileField
 from ..utils.compatibility import LTE_DJANGO_1_7, python_2_unicode_compatible
 from .foldermodels import Folder
-from ..drafts.models import DraftLiveMixin
-
+from ..drafts.models import DraftLiveMixin, DraftLiveQuerySetMixin
 
 try:
     from polymorphic.models import PolymorphicModel
@@ -41,6 +41,10 @@ class FileManager(PolymorphicManager):
 
     def find_duplicates(self, file_obj):
         return [i for i in self.exclude(pk=file_obj.pk).filter(sha1=file_obj.sha1)]
+
+
+class FileQuerySet(DraftLiveQuerySetMixin, PolymorphicQuerySet):
+    pass
 
 
 @python_2_unicode_compatible
@@ -78,7 +82,7 @@ class File(PolymorphicModel, DraftLiveMixin, mixins.IconsMixin):
                     'file. File will be publicly accessible '
                     'to anyone.'))
 
-    objects = FileManager()
+    objects = FileManager.from_queryset(FileQuerySet)()
 
     @classmethod
     def matches_file_type(cls, iname, ifile, request):
