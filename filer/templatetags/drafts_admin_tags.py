@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from django import template
+from django.template.loader import render_to_string
+from django.utils.html import escape, escapejs
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -51,3 +54,24 @@ def drafts_submit_row(context):
         ctx['draft_workflow_buttons'] = buttons
 
     return ctx
+
+
+@register.filter()
+def drafts_admin_label(obj):
+    """
+    Returns html suitable for displaying this object in admin.
+    Main functionality is to include markup showing the draft indicator
+    for drafts.
+    """
+    if obj.is_live:
+        return escape(obj.label)
+    context = {'obj': obj}
+    return mark_safe(
+        '{} {}'.format(
+            escape(obj.label),
+            render_to_string(
+                'admin/filer/includes/draft-indicator.html',
+                context
+            )
+        )
+    )

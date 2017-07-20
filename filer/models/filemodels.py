@@ -217,6 +217,13 @@ class File(PolymorphicModel, DraftLiveMixin, mixins.IconsMixin):
         text = "%s" % (text,)
         return text
 
+    @property
+    def admin_label(self):
+        if self.is_live:
+            return self.label
+        else:
+            return '{} [DRAFT]'.format(self.label)
+
     def __lt__(self, other):
         return self.label.lower() < other.label.lower()
 

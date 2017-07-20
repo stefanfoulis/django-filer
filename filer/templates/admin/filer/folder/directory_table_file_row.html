@@ -5,7 +5,7 @@
     <tr>
         <td class="column-checkbox">
             {% if is_popup and filer_admin_context.pick_file and not file.is_draft %}
-                <a class="insertlink insertlinkButton" href="#" onclick="opener.dismissRelatedImageLookupPopup(window, {{ file.id|unlocalize }}, '{{ file.icons.48|escapejs }}', '{{ file.label|escapejs }}'); return false;"
+                <a class="insertlink insertlinkButton" href="#" onclick="opener.dismissRelatedImageLookupPopup(window, {{ file.id|unlocalize }}, '{{ file.icons.48|escapejs }}', '{{ file|drafts_admin_label|escapejs }}'); return false;"
                     title="{% trans 'Select this file' %}">&nbsp;</a>
             {% elif action_form and not is_popup %}
                 <input type="checkbox" class="action-select" value="file-{{ item.pk }}" name="_selected_action">
@@ -13,7 +13,7 @@
         </td>
         <td class="column-icon">
             {% if is_popup and filer_admin_context.pick_file and not file.is_draft %}
-                <a href="#" onclick="opener.dismissRelatedImageLookupPopup(window, {{ file.id|unlocalize }}, '{{ file.icons.48|escapejs }}', '{{ file.label|escapejs }}'); return false;"
+                <a href="#" onclick="opener.dismissRelatedImageLookupPopup(window, {{ file.id|unlocalize }}, '{{ file.icons.48|escapejs }}', '{{ file|drafts_admin_label|escapejs }}'); return false;"
                     title="{% trans 'Select this file' %}">
             {% elif is_popup and filer_admin_context.pick_file and file.is_draft %}
                 {# Don't link if this is a draft #}
@@ -32,7 +32,7 @@
             <div>
                 <strong>
                     {% if is_popup and filer_admin_context.pick_file and not file.is_draft %}
-                        <a href="#" onclick="opener.dismissRelatedImageLookupPopup(window, {{ file.id|unlocalize }}, '{{ file.icons.48|escapejs }}', '{{ file.label|escapejs }}'); return false;"
+                        <a href="#" onclick="opener.dismissRelatedImageLookupPopup(window, {{ file.id|unlocalize }}, '{{ file.icons.48|escapejs }}', '{{ file|drafts_admin_label|escapejs }}'); return false;"
                             title="{% trans 'Select this file' %}">
                     {% elif is_popup and filer_admin_context.pick_file and file.is_draft %}
                         {# Don't link if this is a draft #}
@@ -51,7 +51,7 @@
                             class="insertlink insertlinkButton"
                             style="float: right;"
                             href="#"
-                            onclick="opener.dismissRelatedImageLookupPopup(window, {{ file.draft.id|unlocalize }}, '{{ file.draft.icons.48|escapejs }}', '{{ file.draft.label|escapejs }}'); return false;"
+                            onclick="opener.dismissRelatedImageLookupPopup(window, {{ file.draft.id|unlocalize }}, '{{ file.draft.icons.48|escapejs }}', '{{ file.draft|drafts_admin_label|escapejs }}'); return false;"
                             title="{% trans 'Select this file' %}"
                         >{% trans "pick" %} {% include 'admin/filer/includes/draft-indicator.html' %}</a>
                     {% elif is_popup and filer_admin_context.pick_file and file.is_draft %}
@@ -59,7 +59,7 @@
                             class="insertlink insertlinkButton"
                             style="float: right;"
                             href="#"
-                            onclick="opener.dismissRelatedImageLookupPopup(window, {{ file.id|unlocalize }}, '{{ file.icons.48|escapejs }}', '{{ file.label|escapejs|escapejs }}'); return false;"
+                            onclick="opener.dismissRelatedImageLookupPopup(window, {{ file.id|unlocalize }}, '{{ file.icons.48|escapejs }}', '{{ file|drafts_admin_label|escapejs|escapejs }}'); return false;"
                             title="{% trans 'Select this file' %}"
                         >{% trans "pick" %} {% include 'admin/filer/includes/draft-indicator.html' %}</a>
                     {% elif file.is_live and file.has_pending_changes and not is_popup %}
